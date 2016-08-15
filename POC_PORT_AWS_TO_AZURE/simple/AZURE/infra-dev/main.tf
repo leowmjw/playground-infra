@@ -42,13 +42,23 @@ resource "azurerm_resource_group" "development" {
   }
 }
 
+# Public IP address?
+
+resource "azurerm_public_ip" "pubip" {
+  name = "developmentPublicIP"
+  location = "${var.azure_region}"
+  resource_group_name = "${azurerm_resource_group.development.name}"
+  public_ip_address_allocation = "static"
+  domain_name_label = "mydevelopment"
+}
 
 # Create a virtual network in the web_servers resource group
 
 resource "azurerm_virtual_network" "network" {
   name = "developmentNetwork"
   address_space = [
-    "10.0.0.0/16"]
+    "10.0.0.0/16"
+  ]
   location = "${var.azure_region}"
   resource_group_name = "${azurerm_resource_group.development.name}"
 
@@ -65,5 +75,29 @@ resource "azurerm_virtual_network" "network" {
   subnet {
     name = "subnet3"
     address_prefix = "10.0.3.0/24"
+  }
+}
+
+resource "azurerm_subnet" "subnet" {
+  name = "subnet1"
+  resource_group_name = "${azurerm_resource_group.development.name}"
+  virtual_network_name = "${azurerm_virtual_network.network.name}"
+  address_prefix = "10.0.1.0/24"
+}
+
+resource "azurerm_network_interface" "network_interface" {
+  name = "developmentNetworkInterface"
+  resource_group_name = "${azurerm_resource_group.development.name}"
+  location = "${var.azure_region}"
+
+  ip_configuration {
+    name = "ipconfig1"
+    public_ip_address_id = "${azurerm_public_ip.pubip.id}"
+    private_ip_address_allocation = "dynamic"
+    subnet_id = "${azurerm_subnet.subnet.id}"
+  }
+
+  tags {
+    environment = "Development"
   }
 }
