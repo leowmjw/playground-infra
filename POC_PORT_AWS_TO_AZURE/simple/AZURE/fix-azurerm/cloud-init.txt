@@ -1,0 +1,5 @@
+#!/bin/bash
+#
+
+echo "LOCK-CLOUD_INIT" >/tmp/mylock
+apt-get update && apt-get install -y php-fpm
