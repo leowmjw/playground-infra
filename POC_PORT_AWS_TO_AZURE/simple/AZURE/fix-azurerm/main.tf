@@ -74,6 +74,7 @@ resource "fixazurerm_subnet" "subnet3" {
 }
 
 # Route table ....
+/*
 resource "fixazurerm_route_table" "public" {
   name = "PublicRouteTable"
   location = "${var.azure_region}"
@@ -92,6 +93,7 @@ resource "fixazurerm_route" "public" {
   next_hop_type = "Internet"
   route_table_name = "${fixazurerm_route_table.public.name}"
 }
+*/
 
 # Public IP address?
 resource "fixazurerm_public_ip" "pubip" {
@@ -121,21 +123,57 @@ resource "fixazurerm_network_interface" "network_interface" {
 
 }
 
-// SKU for Storage is as below
-/*
+resource "fixazurerm_storage_account" "development" {
+  name = "fixazurermdevsa"
+  resource_group_name = "${fixazurerm_resource_group.development.name}"
+  location = "${var.azure_region}"
+  account_type = "Standard_LRS"
 
-  "sku": {
-    "name": "Standard_LRS",
-    "tier": "Standard"
+  tags {
+    environment = "Development"
   }
-  "sku": {
-    "name": "Premium_LRS",
-    "tier": "Premium"
+}
+
+resource "fixazurerm_storage_container" "development" {
+  name = "vhds"
+  resource_group_name = "${fixazurerm_resource_group.development.name}"
+  storage_account_name = "${fixazurerm_storage_account.development.name}"
+  container_access_type = "private"
+}
+
+resource "fixazurerm_virtual_machine" "development" {
+  name = "acctvm"
+  location = "${var.azure_region}"
+  resource_group_name = "${fixazurerm_resource_group.development.name}"
+  network_interface_ids = ["${fixazurerm_network_interface.network_interface.id}"]
+  vm_size = "Standard_A0"
+
+  storage_image_reference {
+    publisher = "Canonical"
+    offer = "UbuntuServer"
+    sku = "16.04.0-LTS"
+    version = "latest"
   }
-*/
 
-/*
+  storage_os_disk {
+    name = "myosdisk1"
+    vhd_uri = "${fixazurerm_storage_account.development.primary_blob_endpoint}${fixazurerm_storage_container.development.name}/myosdisk1.vhd"
+    caching = "ReadWrite"
+    create_option = "FromImage"
+  }
 
-*/
+  os_profile {
+    computer_name = "hostname"
+    admin_username = "testadmin"
+    admin_password = "Password1234!"
+  }
 
+  os_profile_linux_config {
+    disable_password_authentication = false
+  }
+
+  tags {
+    environment = "Development"
+  }
+}
 
