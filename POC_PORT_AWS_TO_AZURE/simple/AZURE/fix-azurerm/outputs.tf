@@ -14,6 +14,9 @@ output "public_fqdn" {
   value = "${fixazurerm_public_ip.pubip.fqdn}"
 }
 
+output "public_fqdn_backup" {
+  value = "${fixazurerm_public_ip.pubip2.fqdn}"
+}
 
 /*
  **** TO BE PORTED ******

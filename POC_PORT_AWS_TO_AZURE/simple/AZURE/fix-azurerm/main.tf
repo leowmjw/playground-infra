@@ -127,6 +127,50 @@ resource "fixazurerm_public_ip" "pubip2" {
     type = "Backup"
   }
 }
+
+# Attach LB Public IP address to both the VMs
+resource "fixazurerm_public_ip" "lbpip" {
+  name = "loadBalancerPublicIP"
+  resource_group_name = "${fixazurerm_resource_group.development.name}"
+  location = "${fixazurerm_resource_group.development.location}"
+  public_ip_address_allocation = "static"
+  domain_name_label = "mydevlb"
+
+  tags {
+    environment = "Production"
+  }
+}
+
+# Load Balancer rules here ..
+resource "fixazurerm_lb" "prodlb" {
+  name = "TestLoadBalancer"
+  location = "${fixazurerm_resource_group.development.location}"
+  resource_group_name = "${fixazurerm_resource_group.development.name}"
+
+  frontend_ip_configuration {
+    name = "PublicIPAddress"
+    public_ip_address_id = "${fixazurerm_public_ip.lbpip.id}"
+  }
+}
+
+resource "fixazurerm_lb_rule" "prodlbrule" {
+  name = "LBRule"
+  location = "${fixazurerm_resource_group.development.location}"
+  resource_group_name = "${fixazurerm_resource_group.development.name}"
+  loadbalancer_id = "${fixazurerm_lb.prodlb.id}"
+  protocol = "Tcp"
+  frontend_port = 80
+  backend_port = 8080
+  frontend_ip_configuration_name = "PublicIPAddress"
+}
+
+resource "fixazurerm_lb_backend_address_pool" "prodlbpool" {
+  name = "BackEndAddressPool"
+  location = "${fixazurerm_resource_group.development.location}"
+  resource_group_name = "${fixazurerm_resource_group.development.name}"
+  loadbalancer_id = "${fixazurerm_lb.prodlb.id}"
+}
+
 # Attach the Public IP address to a Network Interface inside Subnet1 (10.0.1.0/24)
 resource "fixazurerm_network_interface" "network_interface" {
   name = "developmentNetworkInterface"
@@ -138,7 +182,11 @@ resource "fixazurerm_network_interface" "network_interface" {
     public_ip_address_id = "${fixazurerm_public_ip.pubip.id}"
     private_ip_address_allocation = "dynamic"
     subnet_id = "${fixazurerm_subnet.subnet1.id}"
+    load_balancer_backend_address_pools_ids = [
+      "${fixazurerm_lb_backend_address_pool.prodlbpool.id}"]
   }
+
+  enable_ip_forwarding = true
 
   tags {
     environment = "Development"
@@ -156,7 +204,10 @@ resource "fixazurerm_network_interface" "netint2" {
     public_ip_address_id = "${fixazurerm_public_ip.pubip2.id}"
     private_ip_address_allocation = "dynamic"
     subnet_id = "${fixazurerm_subnet.subnet2.id}"
+    load_balancer_backend_address_pools_ids = [
+      "${fixazurerm_lb_backend_address_pool.prodlbpool.id}"]
   }
+  enable_ip_forwarding = true
 
   tags {
     type = "Backup"
@@ -181,7 +232,6 @@ resource "fixazurerm_storage_container" "development" {
   container_access_type = "private"
 }
 
-
 resource "fixazurerm_virtual_machine" "dev2" {
   count = 1
   name = "backupvm"
@@ -190,12 +240,15 @@ resource "fixazurerm_virtual_machine" "dev2" {
   network_interface_ids = [
     "${fixazurerm_network_interface.netint2.id}"]
   vm_size = "Standard_A0"
+  delete_os_disk_on_termination = true
+  delete_data_disks_on_termination = true
 
   storage_image_reference {
     publisher = "Canonical"
     offer = "UbuntuServer"
     sku = "16.04.0-LTS"
     version = "latest"
+
   }
 
   storage_os_disk {
@@ -203,6 +256,14 @@ resource "fixazurerm_virtual_machine" "dev2" {
     vhd_uri = "${fixazurerm_storage_account.development.primary_blob_endpoint}${fixazurerm_storage_container.development.name}/myosdisk2.vhd"
     caching = "ReadWrite"
     create_option = "FromImage"
+  }
+
+  storage_data_disk {
+    name = "mydatadisk2"
+    create_option = "empty"
+    disk_size_gb = 10
+    lun = 2
+    vhd_uri = "${fixazurerm_storage_account.development.primary_blob_endpoint}${fixazurerm_storage_container.development.name}/mydatadisk2.vhd"
   }
 
   os_profile {
@@ -227,7 +288,6 @@ resource "fixazurerm_virtual_machine" "dev2" {
   }
 }
 
-
 resource "fixazurerm_virtual_machine" "development" {
   name = "acctvm"
   location = "${var.azure_region}"
@@ -235,6 +295,7 @@ resource "fixazurerm_virtual_machine" "development" {
   network_interface_ids = [
     "${fixazurerm_network_interface.network_interface.id}"]
   vm_size = "Standard_A0"
+  delete_os_disk_on_termination = true
 
   storage_image_reference {
     publisher = "Canonical"
@@ -259,6 +320,8 @@ resource "fixazurerm_virtual_machine" "development" {
   os_profile_linux_config {
     disable_password_authentication = false
   }
+
+  availability_set_id = "${fixazurerm_availability_set.development.id}"
 
   tags {
     environment = "Development"
