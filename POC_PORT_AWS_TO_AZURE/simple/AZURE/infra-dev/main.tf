@@ -25,11 +25,11 @@ variable "azure_region" {
 }
 
 provider "azurerm" {
+  # alias = "bob"
   subscription_id = "${var.ARM_SUBSCRIPTION_ID}"
   client_id = "${var.azure_access_key}"
   client_secret = "${var.azure_secret_key}"
   tenant_id = "${var.azure_tenant_id}"
-  alias = "sinar_proj"
 }
 
 # Create a resource group

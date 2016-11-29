@@ -3,19 +3,35 @@ output "region" {
 }
 
 output "public_ip_adress" {
-  value = "${fixazurerm_public_ip.pubip.ip_address}"
-}
-
-output "public_ip_id" {
-  value = "${fixazurerm_public_ip.pubip.id}"
+  value = "${fixazurerm_public_ip.lbpip.ip_address}"
 }
 
 output "public_fqdn" {
+  value = "${fixazurerm_public_ip.lbpip.fqdn}"
+}
+
+output "public_ip_primary" {
+  value = "${fixazurerm_public_ip.pubip.ip_address}"
+}
+
+output "public_fqdn_primary" {
   value = "${fixazurerm_public_ip.pubip.fqdn}"
+}
+
+output "public_ip_backup" {
+  value = "${fixazurerm_public_ip.pubip2.ip_address}"
 }
 
 output "public_fqdn_backup" {
   value = "${fixazurerm_public_ip.pubip2.fqdn}"
+}
+
+output "public_ip_consul" {
+  value = "${fixazurerm_public_ip.pubip3.ip_address}"
+}
+
+output "public_fqdn_consul" {
+  value = "${fixazurerm_public_ip.pubip3.fqdn}"
 }
 
 /*

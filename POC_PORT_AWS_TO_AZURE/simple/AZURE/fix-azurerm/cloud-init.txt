@@ -3,3 +3,9 @@
 
 echo "LOCK-CLOUD_INIT" >/tmp/mylock
 apt-get update && apt-get install -y php-fpm
+# Sed to replace listener to TCP port 9000
+# unless Caddy can use socket?? Yes it can
+# Grab down Caddyfile; or echo it ?? below?
+# Get caddy ready to roll; run it as foreground process??
+# Unzip stuff above ..
+# Put in the test php file index.php??

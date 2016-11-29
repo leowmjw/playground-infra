@@ -112,8 +112,8 @@ resource "fixazurerm_public_ip" "pubip" {
   name = "developmentPublicIP"
   location = "${var.azure_region}"
   resource_group_name = "${fixazurerm_resource_group.development.name}"
-  public_ip_address_allocation = "static"
-  domain_name_label = "mydevelopment"
+  public_ip_address_allocation = "dynamic"
+  domain_name_label = "mydev"
 }
 
 resource "fixazurerm_public_ip" "pubip2" {
@@ -125,6 +125,18 @@ resource "fixazurerm_public_ip" "pubip2" {
 
   tags {
     type = "Backup"
+  }
+}
+
+resource "fixazurerm_public_ip" "pubip3" {
+  name = "devPublicIP3"
+  location = "${fixazurerm_resource_group.development.location}"
+  resource_group_name = "${fixazurerm_resource_group.development.name}"
+  public_ip_address_allocation = "dynamic"
+  domain_name_label = "myconsul"
+
+  tags {
+    type = "Consul"
   }
 }
 
@@ -153,15 +165,15 @@ resource "fixazurerm_lb" "prodlb" {
   }
 }
 
-resource "fixazurerm_lb_rule" "prodlbrule" {
-  name = "LBRule"
-  location = "${fixazurerm_resource_group.development.location}"
+resource "fixazurerm_lb_probe" "caddy" {
+  name = "CaddyTCPProbe"
   resource_group_name = "${fixazurerm_resource_group.development.name}"
+  location = "${fixazurerm_resource_group.development.location}"
   loadbalancer_id = "${fixazurerm_lb.prodlb.id}"
   protocol = "Tcp"
-  frontend_port = 80
-  backend_port = 8080
-  frontend_ip_configuration_name = "PublicIPAddress"
+  port = 8080
+  interval_in_seconds = 8
+  number_of_probes = 4
 }
 
 resource "fixazurerm_lb_backend_address_pool" "prodlbpool" {
@@ -169,6 +181,19 @@ resource "fixazurerm_lb_backend_address_pool" "prodlbpool" {
   location = "${fixazurerm_resource_group.development.location}"
   resource_group_name = "${fixazurerm_resource_group.development.name}"
   loadbalancer_id = "${fixazurerm_lb.prodlb.id}"
+}
+
+resource "fixazurerm_lb_rule" "prodlbrule" {
+  name = "LBRule"
+  resource_group_name = "${fixazurerm_resource_group.development.name}"
+  location = "${fixazurerm_resource_group.development.location}"
+  loadbalancer_id = "${fixazurerm_lb.prodlb.id}"
+  frontend_ip_configuration_name = "PublicIPAddress"
+  protocol = "Tcp"
+  frontend_port = 80
+  backend_port = 8080
+  backend_address_pool_id = "${fixazurerm_lb_backend_address_pool.prodlbpool.id}"
+  probe_id = "${fixazurerm_lb_probe.caddy.id}"
 }
 
 # Attach the Public IP address to a Network Interface inside Subnet1 (10.0.1.0/24)
@@ -211,6 +236,25 @@ resource "fixazurerm_network_interface" "netint2" {
 
   tags {
     type = "Backup"
+  }
+}
+
+# Consul Network here ..
+resource "fixazurerm_network_interface" "netint3" {
+  name = "devNetworkInterface3"
+  resource_group_name = "${fixazurerm_resource_group.development.name}"
+  location = "${fixazurerm_resource_group.development.location}"
+  ip_configuration {
+    name = "ipconfig3"
+    public_ip_address_id = "${fixazurerm_public_ip.pubip3.id}"
+    private_ip_address_allocation = "dynamic"
+    subnet_id = "${fixazurerm_subnet.subnet3.id}"
+  }
+
+  enable_ip_forwarding = true
+
+  tags {
+    type = "Consul"
   }
 }
 
@@ -315,10 +359,15 @@ resource "fixazurerm_virtual_machine" "development" {
     computer_name = "hostname"
     admin_username = "testadmin"
     admin_password = "Password1234!"
+    custom_data = "${base64encode(file("cloud-init.txt"))}"
   }
 
   os_profile_linux_config {
-    disable_password_authentication = false
+    disable_password_authentication = true
+    ssh_keys {
+      path = "/home/testadmin/.ssh/authorized_keys"
+      key_data = "${file("/Users/leow/.ssh/id_rsa.pub")}"
+    }
   }
 
   availability_set_id = "${fixazurerm_availability_set.development.id}"
@@ -328,3 +377,48 @@ resource "fixazurerm_virtual_machine" "development" {
   }
 }
 
+
+resource "fixazurerm_virtual_machine" "consul" {
+  name = "consulvm"
+  location = "${var.azure_region}"
+  resource_group_name = "${fixazurerm_resource_group.development.name}"
+  network_interface_ids = [
+    "${fixazurerm_network_interface.netint3.id}"]
+  vm_size = "Standard_A0"
+  delete_os_disk_on_termination = true
+
+  storage_image_reference {
+    publisher = "Canonical"
+    offer = "UbuntuServer"
+    sku = "16.04.0-LTS"
+    version = "latest"
+  }
+
+  storage_os_disk {
+    name = "myosdisk1"
+    vhd_uri = "${fixazurerm_storage_account.development.primary_blob_endpoint}${fixazurerm_storage_container.development.name}/myosdisk3.vhd"
+    caching = "ReadWrite"
+    create_option = "FromImage"
+  }
+
+  os_profile {
+    computer_name = "hostname"
+    admin_username = "testadmin"
+    admin_password = "Password1234!"
+    custom_data = "${base64encode(file("cloud-init.txt"))}"
+  }
+
+  os_profile_linux_config {
+    disable_password_authentication = true
+    ssh_keys {
+      path = "/home/testadmin/.ssh/authorized_keys"
+      key_data = "${file("/Users/leow/.ssh/id_rsa.pub")}"
+    }
+  }
+
+  availability_set_id = "${fixazurerm_availability_set.development.id}"
+
+  tags {
+    environment = "Development"
+  }
+}
