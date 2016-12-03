@@ -1,8 +1,3 @@
-variable "ARM_SUBSCRIPTION_ID"
-{
-  description = "Subscription ID for the Azure Trial; FREE CREDITS!!"
-}
-
 variable "azure_access_key" {
   description = "Access key for Azure"
 }
@@ -26,7 +21,7 @@ variable "azure_region" {
 
 provider "azurerm" {
   # alias = "bob"
-  subscription_id = "${var.ARM_SUBSCRIPTION_ID}"
+  subscription_id = "${var.azure_subscription_id}"
   client_id = "${var.azure_access_key}"
   client_secret = "${var.azure_secret_key}"
   tenant_id = "${var.azure_tenant_id}"

@@ -205,7 +205,8 @@ resource "fixazurerm_network_interface" "network_interface" {
   ip_configuration {
     name = "ipconfig1"
     public_ip_address_id = "${fixazurerm_public_ip.pubip.id}"
-    private_ip_address_allocation = "dynamic"
+    private_ip_address = "10.0.1.4"
+    private_ip_address_allocation = "static"
     subnet_id = "${fixazurerm_subnet.subnet1.id}"
     load_balancer_backend_address_pools_ids = [
       "${fixazurerm_lb_backend_address_pool.prodlbpool.id}"]
@@ -227,7 +228,8 @@ resource "fixazurerm_network_interface" "netint2" {
   ip_configuration {
     name = "ipconfig1"
     public_ip_address_id = "${fixazurerm_public_ip.pubip2.id}"
-    private_ip_address_allocation = "dynamic"
+    private_ip_address = "10.0.2.4"
+    private_ip_address_allocation = "static"
     subnet_id = "${fixazurerm_subnet.subnet2.id}"
     load_balancer_backend_address_pools_ids = [
       "${fixazurerm_lb_backend_address_pool.prodlbpool.id}"]
@@ -247,7 +249,8 @@ resource "fixazurerm_network_interface" "netint3" {
   ip_configuration {
     name = "ipconfig3"
     public_ip_address_id = "${fixazurerm_public_ip.pubip3.id}"
-    private_ip_address_allocation = "dynamic"
+    private_ip_address = "10.0.3.4"
+    private_ip_address_allocation = "static"
     subnet_id = "${fixazurerm_subnet.subnet3.id}"
   }
 
@@ -304,7 +307,7 @@ resource "fixazurerm_virtual_machine" "dev2" {
 
   storage_data_disk {
     name = "mydatadisk2"
-    create_option = "empty"
+    create_option = "Empty"
     disk_size_gb = 10
     lun = 2
     vhd_uri = "${fixazurerm_storage_account.development.primary_blob_endpoint}${fixazurerm_storage_container.development.name}/mydatadisk2.vhd"
@@ -312,7 +315,7 @@ resource "fixazurerm_virtual_machine" "dev2" {
 
   os_profile {
     computer_name = "backuphost"
-    admin_username = "leowmjw"
+    admin_username = "testadmin"
     admin_password = "passw0rd"
     custom_data = "${base64encode(file("cloud-init.txt"))}"
   }
@@ -320,7 +323,7 @@ resource "fixazurerm_virtual_machine" "dev2" {
   os_profile_linux_config {
     disable_password_authentication = true
     ssh_keys {
-      path = "/home/leowmjw/.ssh/authorized_keys"
+      path = "/home/testadmin/.ssh/authorized_keys"
       key_data = "${file("/Users/leow/.ssh/id_rsa.pub")}"
     }
   }
@@ -333,6 +336,7 @@ resource "fixazurerm_virtual_machine" "dev2" {
 }
 
 resource "fixazurerm_virtual_machine" "development" {
+  count = 1
   name = "acctvm"
   location = "${var.azure_region}"
   resource_group_name = "${fixazurerm_resource_group.development.name}"
@@ -356,7 +360,7 @@ resource "fixazurerm_virtual_machine" "development" {
   }
 
   os_profile {
-    computer_name = "hostname"
+    computer_name = "myprimary"
     admin_username = "testadmin"
     admin_password = "Password1234!"
     custom_data = "${base64encode(file("cloud-init.txt"))}"
@@ -379,6 +383,7 @@ resource "fixazurerm_virtual_machine" "development" {
 
 
 resource "fixazurerm_virtual_machine" "consul" {
+  count = 1
   name = "consulvm"
   location = "${var.azure_region}"
   resource_group_name = "${fixazurerm_resource_group.development.name}"
@@ -402,7 +407,7 @@ resource "fixazurerm_virtual_machine" "consul" {
   }
 
   os_profile {
-    computer_name = "hostname"
+    computer_name = "myconsul"
     admin_username = "testadmin"
     admin_password = "Password1234!"
     custom_data = "${base64encode(file("cloud-init.txt"))}"
