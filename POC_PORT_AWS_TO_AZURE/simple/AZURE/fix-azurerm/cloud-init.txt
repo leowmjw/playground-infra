@@ -16,7 +16,8 @@ unzip consul_0.7.1_linux_amd64.zip
 
 # Setup needed folders and start service; to be replaced in systemd
 mkdir ./consul.d
-/opt/consul/consul agent -server -ui -bootstrap-expect=3 -data-dir=/tmp/consul  -config-dir=./consul.d -retry-join=10.0.1.4 -retry-join=10.0.2.4 -retry-join=10.0.3.4 &
+/opt/consul/consul agent -server -ui -bootstrap-expect=3 -data-dir=/tmp/consul \
+  -config-dir=./consul.d -retry-join=10.0.1.4 -retry-join=10.0.2.4 -retry-join=10.0.3.4 &
 
 # Setup dnsmsq
 # From: https://github.com/darron/kvexpress-demo/blob/c0bd1733f0ad78979a34242d5cfe9961b0c3cabd/ami-build/provision.sh#L42-L56
@@ -68,6 +69,7 @@ sudo ./nomad agent -server -client -bootstrap-expect=3 -data-dir=/tmp/nomad &
 # Run Nomad-UI
 wget "https://github.com/iverberk/nomad-ui/releases/download/v0.4.0/nomad-ui-linux-amd64"
 chmod +x ./nomad-ui-linux-amd64
+
 # With IP in template; can build as ./nomad-ui-linux-amd64 -web.listen-address "10.0.3.4:3000"
 ./nomad-ui-linux-amd64
 
