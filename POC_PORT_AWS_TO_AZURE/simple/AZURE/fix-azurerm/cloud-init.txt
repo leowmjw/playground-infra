@@ -2,7 +2,7 @@
 #
 
 # Get the basic packages
-apt-get update && apt-get install -y unzip dnsmasq sysstat
+apt-get update && apt-get install -y unzip dnsmasq sysstat docker.io
 # Should probably get jq as well :P
 
 # Consul operates in /opt
@@ -16,8 +16,27 @@ unzip consul_0.7.1_linux_amd64.zip
 
 # Setup needed folders and start service; to be replaced in systemd
 mkdir ./consul.d
+
+# Extract the IP address from the determined interface
+CONSUL_CLIENT_INTERFACE="eth0"
+CONSUL_CLIENT_ADDRESS=$(ip -o -4 addr list $CONSUL_CLIENT_INTERFACE | head -n1 | awk '{print $4}' | cut -d/ -f1)
+# Use that address to setup the HTTP endpoint so that it is reachable from within Docker container
+cat > ./consul.d/config.json <<EOF
+{
+    "addresses": {
+        "http": "${CONSUL_CLIENT_ADDRESS}"
+    }
+}
+EOF
+
+# Extract the IP address from the determined interface
+CONSUL_BIND_INTERFACE="eth0"
+CONSUL_BIND_ADDRESS=$(ip -o -4 addr list $CONSUL_BIND_INTERFACE | head -n1 | awk '{print $4}' | cut -d/ -f1)
+
+# Start up the Consul agent
 /opt/consul/consul agent -server -ui -bootstrap-expect=3 -data-dir=/tmp/consul \
-  -config-dir=./consul.d -retry-join=10.0.1.4 -retry-join=10.0.2.4 -retry-join=10.0.3.4 &
+  -config-dir=./consul.d -retry-join=10.0.1.4 -retry-join=10.0.2.4 -retry-join=10.0.3.4 \
+  -bind=${CONSUL_BIND_ADDRESS} &
 
 # Setup dnsmsq
 # From: https://github.com/darron/kvexpress-demo/blob/c0bd1733f0ad78979a34242d5cfe9961b0c3cabd/ami-build/provision.sh#L42-L56
@@ -64,17 +83,17 @@ unzip nomad_0.5.0_linux_amd64.zip
 mkdir ./jobs
 
 # Run both as server and client
-sudo ./nomad agent -server -client -bootstrap-expect=3 -data-dir=/tmp/nomad &
+./nomad agent -server -client -bootstrap-expect=3 -data-dir=/tmp/nomad &
 
 # Run Nomad-UI
 wget "https://github.com/iverberk/nomad-ui/releases/download/v0.4.0/nomad-ui-linux-amd64"
 chmod +x ./nomad-ui-linux-amd64
 
 # With IP in template; can build as ./nomad-ui-linux-amd64 -web.listen-address "10.0.3.4:3000"
-./nomad-ui-linux-amd64
+./nomad-ui-linux-amd64 &
 
-# Sleep 30 secs to ensure the apt-get gets completed?
-sleep 30
-
-# Only in the end run Docker as its private IP address confuses Consul ..
-apt-get install -y docker.io
+# Setup Weave Network
+# =====================
+# curl -L git.io/weave -o /usr/local/bin/weave \
+# chmod +x /usr/local/bin/weave
+# weave launch --ipalloc-range 10.1.0.0/16 10.0.1.4 10.0.2.4 10.0.3.4 &
