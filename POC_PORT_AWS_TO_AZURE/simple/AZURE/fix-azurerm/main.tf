@@ -389,7 +389,8 @@ resource "fixazurerm_virtual_machine" "consul" {
   resource_group_name = "${fixazurerm_resource_group.development.name}"
   network_interface_ids = [
     "${fixazurerm_network_interface.netint3.id}"]
-  vm_size = "Standard_A0"
+  # vm_size = "Standard_A0"
+  vm_size = "Standard_F2"
   delete_os_disk_on_termination = true
 
   storage_image_reference {
