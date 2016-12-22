@@ -6,7 +6,7 @@
 # ===========================================================
 
 variable "num_node" {
-  default = 0
+  default = 1
 }
 
 variable "disable_subnet1" {
@@ -14,7 +14,7 @@ variable "disable_subnet1" {
 }
 
 variable "disable_subnet2" {
-  default = 0
+  default = 1
 }
 
 variable "enable_subnet3" {

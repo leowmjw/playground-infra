@@ -2,7 +2,7 @@
 #
 
 # Get the basic packages
-apt-get update && apt-get install -y unzip dnsmasq sysstat docker.io
+apt-get update && apt-get upgrade && apt-get install -y unzip dnsmasq sysstat docker.io
 # Should probably get jq as well :P
 
 # Consul operates in /opt
@@ -87,6 +87,9 @@ cat > ./config.json <<EOF
 {
     "consul": {
         "address": "${CONSUL_CLIENT_ADDRESS}:8500"
+    },
+    "addresses": {
+        "http": "${CONSUL_CLIENT_ADDRESS}"
     }
 }
 EOF
