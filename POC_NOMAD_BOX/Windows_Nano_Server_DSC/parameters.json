@@ -1,0 +1,51 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "location": {
+            "value": "southeastasia"
+        },
+        "virtualMachineName": {
+            "value": "Nomad-Windows"
+        },
+        "virtualMachineSize": {
+            "value": "Standard_DS2_v2"
+        },
+        "adminUsername": {
+            "value": "leowmjw"
+        },
+        "storageAccountName": {
+            "value": "nomadresourcesdisks133"
+        },
+        "virtualNetworkName": {
+            "value": "developmentNetwork"
+        },
+        "networkInterfaceName": {
+            "value": "nomad-windows359"
+        },
+        "networkSecurityGroupName": {
+            "value": "Nomad-Windows-nsg"
+        },
+        "adminPassword": {
+            "value": null
+        },
+        "storageAccountType": {
+            "value": "Premium_LRS"
+        },
+        "diagnosticsStorageAccountName": {
+            "value": "qzpvc2yd2z7neswarmdiag0"
+        },
+        "diagnosticsStorageAccountId": {
+            "value": "/subscriptions/3fdd09c8-f36c-417f-9d13-c2fd3b7e265b/resourceGroups/container/providers/Microsoft.Storage/storageAccounts/qzpvc2yd2z7neswarmdiag0"
+        },
+        "subnetName": {
+            "value": "subnet2"
+        },
+        "publicIpAddressName": {
+            "value": "Nomad-Windows-ip"
+        },
+        "publicIpAddressType": {
+            "value": "Dynamic"
+        }
+    }
+}
