@@ -20,11 +20,28 @@ variable "azure_region" {
 }
 
 provider "azurerm" {
-  # alias = "bob"
   subscription_id = "${var.azure_subscription_id}"
   client_id = "${var.azure_access_key}"
   client_secret = "${var.azure_secret_key}"
   tenant_id = "${var.azure_tenant_id}"
+}
+
+provider "azurerm" {
+  alias = "bob"
+  subscription_id = "${var.azure_subscription_id}"
+  client_id = "${var.azure_access_key}"
+  client_secret = "${var.azure_secret_key}"
+  tenant_id = "${var.azure_tenant_id}"
+}
+
+# Create a resource group in Alias
+resource "azurerm_resource_group" "alias-development" {
+  provider = "azurerm.bob"
+  name = "acme-nomad-dev-worker"
+  location = "${var.azure_region}"
+  tags {
+    environment = "Alias-Development"
+  }
 }
 
 # Create a resource group
@@ -33,6 +50,21 @@ resource "azurerm_resource_group" "development" {
   location = "${var.azure_region}"
   tags {
     environment = "Development"
+  }
+}
+
+# Alias VPC to test Alias
+resource "azurerm_virtual_network" "alias-network" {
+  provider = "azurerm.bob"
+  name = "alias-developmentNetwork"
+  address_space = [
+    "10.0.0.0/16"
+  ]
+  location = "${var.azure_region}"
+  resource_group_name = "${azurerm_resource_group.alias-development.name}"
+
+  tags {
+    Name = "alias-otto"
   }
 }
 
@@ -48,6 +80,15 @@ resource "azurerm_virtual_network" "network" {
   tags {
     Name = "otto"
   }
+}
+
+# The Alias public subnet is to test clash of multiple alias + state files
+resource "azurerm_subnet" "alias-subnet1" {
+  provider = "azurerm.bob"
+  name = "alias-subnet1"
+  resource_group_name = "${azurerm_resource_group.alias-development.name}"
+  virtual_network_name = "${azurerm_virtual_network.alias-network.name}"
+  address_prefix = "10.0.1.0/24"
 }
 
 # The public subnet is where resources connected to the internet will go
