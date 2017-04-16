@@ -13,26 +13,21 @@ variable "azure_client_secret" {
 
 variable "azure_tenant_id" {
   description = ""
-
 }
 
 variable "organization" {
   description = ""
-
+  default = "acme"
 }
 
 variable "project" {
   description = ""
-
+  default = "nomad"
 }
+
 variable "environment" {
   description = ""
   default = "dev"
-}
-
-variable "region" {
-  description = ""
-  default = "South East Asia"
 }
 
 variable "cidr_block" {
@@ -40,52 +35,16 @@ variable "cidr_block" {
   default = "10.0.0.0/16"
 }
 
-variable "key_name" {
-  description = ""
-}
-
-variable "domain_name_servers" {
-  description = ""
-  type = "list"
-}
-
-variable "foundation_distribution" {
-  description = ""
-  type = "map"
-  default = {
-    count = 3
-    instance_type = "Standard_A1"
-  }
-}
-
-variable "director_distribution" {
+// TODO: Put here options for Nano once the standard working is done and
+// can control from Linux via Powershell ...?
+variable "windows_distribution" {
   description = ""
   type = "map"
   default = {
     count = 1
-    instance_type = "Standard_A1"
+    instance_type = "Standard_D1_v2"
+    offer = "WindowsServer"
+    sku = "2016-Datacenter-with-Containers"
   }
-}
-
-variable "worker_distribution" {
-  description = ""
-  type = "map"
-  default = {
-    count = 0
-    instance_type = "Standard_A2"
-  }
-}
-
-variable "experiment_distribution" {
-  description = ""
-  type = "map"
-  default = {
-    count = 1
-    instance_type = "Standard_A1"
-  }
-}
-
-variable "pub_key" {
-  description = "Full path to the SSH Public Key to be copied over into the Azure instance"
 }
 

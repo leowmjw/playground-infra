@@ -1,0 +1,1 @@
+echo "Here is the script to be executed somehow ..." > c:\runthis.ps1
