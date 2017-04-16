@@ -110,7 +110,7 @@ resource "azurerm_virtual_machine" "windows_node" {
     create_option = "FromImage"
     # Min size is 30GB :(
     // Windows give you 130GB; can;t reduce it :(
-    // disk_size_gb = 60
+    // disk_size_gb = 130
   }
 
   os_profile {
