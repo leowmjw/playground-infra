@@ -87,8 +87,8 @@ resource "azurerm_network_interface" "windows_netif" {
 resource "azurerm_virtual_machine" "windows_node" {
   count = "${var.num_servers}"
   name = "${var.organization}-${var.project}-${var.environment}-windows-node-${count.index + 1}"
+  resource_group_name = "${data.terraform_remote_state.nomadbox.worker_resource_group_name}"
   location = "${data.terraform_remote_state.nomadbox.resource_group_location}"
-  resource_group_name = "${data.terraform_remote_state.nomadbox.resource_group_name}"
   network_interface_ids = [
     "${element(azurerm_network_interface.windows_netif.*.id, count.index)}"]
   # vm_size = "Standard_A0"
@@ -104,13 +104,13 @@ resource "azurerm_virtual_machine" "windows_node" {
   }
 
   storage_os_disk {
-    name = "${var.organization}-${var.project}-${var.environment}-windows-osdisk-${count.index + 1}"
+    name = "${var.organization}-${var.project}-${var.environment}-windows-osdisc-${count.index + 1}"
     vhd_uri = "${data.terraform_remote_state.nomadbox.storage_uri}/${var.organization}-${var.project}-${var.environment}-windows-osdisk-${count.index + 1}.vhd"
     caching = "ReadWrite"
     create_option = "FromImage"
     # Min size is 30GB :(
     // Windows give you 130GB; can;t reduce it :(
-    // disk_size_gb = 130
+    disk_size_gb = 130
   }
 
   os_profile {
@@ -159,7 +159,7 @@ resource "azurerm_storage_blob" "windows_cloudinit" {
 resource "azurerm_virtual_machine_extension" "windows_extension" {
   count = "${var.num_servers}"
   name = "${var.organization}-${var.project}-${var.environment}-windows-ext-${count.index + 1}"
-  resource_group_name = "${data.terraform_remote_state.nomadbox.resource_group_name}"
+  resource_group_name = "${data.terraform_remote_state.nomadbox.worker_resource_group_name}"
   location = "${data.terraform_remote_state.nomadbox.resource_group_location}"
   publisher = "Microsoft.Compute"
   type = "CustomScriptExtension"
@@ -169,14 +169,21 @@ resource "azurerm_virtual_machine_extension" "windows_extension" {
 
   settings = <<SETTINGS
   {
-        "fileUris": "${data.terraform_remote_state.nomadbox.storage_uri}/${var.organization}-${var.project}-${var.environment}-NomadBoxCloudInit.ps1"
+        "fileUris": [ "https://raw.githubusercontent.com/Microsoft/dotnet-core-sample-templates/master/dotnet-core-music-windows/scripts/configure-music-app.ps1" ]
   }
 SETTINGS
+  /* Storage node needs to be public!!
+  settings = <<SETTINGS
+  {
+        "fileUris": [ "${data.terraform_remote_state.nomadbox.storage_uri}/${var.organization}-${var.project}-${var.environment}-NomadBoxCloudInit.ps1" ]
+  }
+SETTINGS
+*/
 
   // If below pass any sensitive items will not appear in the Terraform plan output :P
   protected_settings = <<PROTECT_SETTINGS
   {
-        "commandToExecute": "powershell.exe -ExecutionPolicy Unrestricted -File NomadBoxCloudInit.ps1"
+        "commandToExecute": "powershell.exe -ExecutionPolicy Unrestricted -File configure-music-app.ps1"
   }
 PROTECT_SETTINGS
   // Make it dependent on a provisioning upload to location for storage??
