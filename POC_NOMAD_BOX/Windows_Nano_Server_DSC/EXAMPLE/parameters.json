@@ -1,0 +1,60 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "location": {
+            "value": "southeastasia"
+        },
+        "virtualMachineName": {
+            "value": "Windows-Docker"
+        },
+        "virtualMachineSize": {
+            "value": "Standard_D1_v2"
+        },
+        "adminUsername": {
+            "value": "testadmin"
+        },
+        "virtualNetworkName": {
+            "value": "acme-nomad-dev-foundation-vnet"
+        },
+        "networkInterfaceName": {
+            "value": "windows-docker666"
+        },
+        "networkSecurityGroupName": {
+            "value": "Windows-Docker-nsg"
+        },
+        "adminPassword": {
+            "value": null
+        },
+        "availabilitySetName": {
+            "value": "acme-nomad-dev-worker-aset"
+        },
+        "storageAccountName": {
+            "value": "acmenomaddevfoundationsa"
+        },
+        "diagnosticsStorageAccountName": {
+            "value": "acmenomaddevfoundationsa"
+        },
+        "diagnosticsStorageAccountId": {
+            "value": "/subscriptions/3fdd09c8-f36c-417f-9d13-c2fd3b7e265b/resourceGroups/acme-nomad-dev-foundation/providers/Microsoft.Storage/storageAccounts/acmenomaddevfoundationsa"
+        },
+        "subnetName": {
+            "value": "acme-nomad-dev-foundation-subnet-3"
+        },
+        "publicIpAddressName": {
+            "value": "Windows-Docker-ip"
+        },
+        "publicIpAddressType": {
+            "value": "Dynamic"
+        },
+        "ex0_vmName": {
+            "value": "Windows-Docker"
+        },
+        "ex0_location": {
+            "value": "southeastasia"
+        },
+        "ex0_fileUris": {
+            "value": "https://iaasv2tempstoragehk.blob.core.windows.net/vmextensionstemporary-00037ffe83d89f14-20170412095953062/wininit.psd1?sv=2015-04-05&sr=c&sig=JTgNkQ%2FPnIWUOpC2ZC98WEJX%2BWxfZS8G%2FCZIB26kl5k%3D&se=2017-04-13T09%3A59%3A53Z&sp=rw"
+        }
+    }
+}
