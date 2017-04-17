@@ -122,11 +122,13 @@ resource "azurerm_virtual_machine" "windows_node" {
   }
 
   os_profile_windows_config {
-    enable_automatic_upgrades = true
     // Below needed to install Extensions
     provision_vm_agent = true
+    enable_automatic_upgrades = true
+    winrm {
+      protocol = "http"
+    }
     /*
-    winrm {}
     additional_unattend_config {}
     */
   }
@@ -141,6 +143,27 @@ resource "azurerm_virtual_machine" "windows_node" {
     type = "Windows"
   }
 }
+
+/*
+resource "null_resource" "winrm" {
+
+    connection {
+        type = "winrm"
+        user = "testadmin"
+        password = "Password1234!"
+        insecure = true
+        host = "10.0.3.4"
+    }
+
+       provisioner "remote-exec" {
+        inline = [
+          "powershell mkdir /opt",
+          "powershell cp /AzureData/* /opt/."
+        ]
+    }
+
+}
+*/
 
 resource "azurerm_storage_blob" "windows_cloudinit" {
   // One script only; maybe only if customization or maybe for Nano Server will be different?

@@ -1,0 +1,24 @@
+# To be run with powershell?  How does the session hold up?
+
+# Allow insecure WinRM connection; used by Terraform
+winrm set winrm/config/client '@{TrustedHosts="*"}'
+winrm set winrm/config/service '@{AllowUnencrypted="true"}'
+winrm set winrm/config/service/auth '@{Basic="true"}
+
+# Source: https://windowsserver.uservoice.com/forums/301869-powershell/suggestions/15150051-add-support-for-tls-1-2-invoke-webrequest-invoke
+# otherwise wget does not work :(
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::TLS12
+
+# Babun?
+wget "http://akamai.bintray.com/32/32b883238172f0fbc7d866d588679a892a5db978?__gda__=exp=1484474756~hmac=060f92ce377114aa7b8a35e15a9c86c92303b237e5cacf00037c5f3d6fc35a93&response-content-disposition=attachment%3Bfilename%3D%22babun-1.2.0-dist.zip%22&response-content-type=application%2Foctet-stream&requestInfo=U2FsdGVkX1-aoS89Ux0zVAOGZ2t-On3-SZ8UjQwAV0722f6mtMdSd_X0VW0AP4Vnppdx7gv89BjIGzJTjGXSGXxFuD9a0_H3pRPOB0rzyy5bxTbsOvNZXcdjdp5wiVchm4jy96W3XUiK6w8uWf_cCQ" -o b.zip
+
+# Consul
+mkdir /opt
+cd /opt
+mkdir consul
+cd consul
+wget "https://releases.hashicorp.com/consul/0.7.2/consul_0.7.2_windows_amd64.zip" -o a.zip
+Expand-Archive a.zip
+mv a/consul.exe .
+./consul agent -dev
+
