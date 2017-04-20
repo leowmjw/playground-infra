@@ -1,183 +1,81 @@
-variable "azure_access_key" {
-  description = "Access key for Azure"
+# Main Terraform
+terraform {
+  required_version = "> 0.9.0"
 }
 
-variable "azure_secret_key" {
-  description = "Secret Key for Azure"
-}
-
-variable "azure_subscription_id" {
-  description = "Subscription ID; get from Console .."
-}
-
-variable "azure_tenant_id" {
-  description = "Tenant ID; from EndPoint in classic panel .."
-}
-
-variable "azure_region" {
-  description = "Region where we will operate; default to SG"
-  default = "Southeast Asia"
+# Variables + Providers
+variable "num_servers" {
+  default = 1
 }
 
 provider "azurerm" {
   subscription_id = "${var.azure_subscription_id}"
-  client_id = "${var.azure_access_key}"
-  client_secret = "${var.azure_secret_key}"
+  client_id = "${var.azure_client_id}"
+  client_secret = "${var.azure_client_secret}"
   tenant_id = "${var.azure_tenant_id}"
 }
 
-# Create a resource group
-resource "azurerm_resource_group" "development" {
-  name = "development"
-  location = "${var.azure_region}"
-  tags {
-    environment = "Development"
+# Remote state from local existing Nomad Box Environment
+data "terraform_remote_state" "nomadbox" {
+  backend = "local"
+
+  config {
+    path = "/Users/leow/Desktop/PROJECTS/DEVOPS/nomad-box/terraform/env-development/terraform.tfstate"
   }
 }
 
-# Main VPC that will contain everything.
-resource "azurerm_virtual_network" "network" {
-  name = "developmentNetwork"
-  address_space = [
-    "10.0.0.0/16"
-  ]
-  location = "${var.azure_region}"
-  resource_group_name = "${azurerm_resource_group.development.name}"
-
-  tags {
-    Name = "otto"
-  }
+# Resource Definitions
+resource "azurerm_availability_set" "windows_aset" {
+  count = 1
+  name = "${var.organization}-${var.project}-${var.environment}-windows-aset"
+  location = "${data.terraform_remote_state.nomadbox.resource_group_location}"
+  resource_group_name = "${data.terraform_remote_state.nomadbox.resource_group_name}"
 }
 
-# The public subnet is where resources connected to the internet will go
-resource "azurerm_subnet" "subnet1" {
-  name = "subnet1"
-  resource_group_name = "${azurerm_resource_group.development.name}"
-  virtual_network_name = "${azurerm_virtual_network.network.name}"
-  address_prefix = "10.0.1.0/24"
+# Subnets as per defined; Directors start at xx.xx.66.yy
+resource "azurerm_subnet" "windows_subnet" {
+  count = "${var.num_servers * 1 > 1 ? 3 : 1}"
+
+  name = "${var.organization}-${var.project}-${var.environment}-windows-subnet-${count.index + 1}"
+  resource_group_name = "${data.terraform_remote_state.nomadbox.resource_group_name}"
+
+  virtual_network_name = "${data.terraform_remote_state.nomadbox.virtual_network}"
+  # address_prefix = "${element(var.foundation_subnets, count.index)}"
+  address_prefix = "${cidrsubnet(var.cidr_block, 8, 65 + count.index + 1)}"
+
+  # HOWTO security; here??
+  # network_security_group_id = ""
+  # WAN routing next time?
+  # route_table_id = ""
+
+  # In order to prevent something like: https://github.com/hashicorp/terraform/issues/7153
+  # Also will need to add dependency on security group once that is added here
+  #     IFF it appears >= TF 0.8.x ..
+  # depends_on = ["azurerm_virtual_network.foundation_vnet"]
 }
 
-# Internal network for consul and Nomad
-resource "azurerm_subnet" "subnet2" {
-  name = "subnet2"
-  resource_group_name = "${azurerm_resource_group.development.name}"
-  virtual_network_name = "${azurerm_virtual_network.network.name}"
-  address_prefix = "10.0.2.0/24"
-}
+# Public IP - No
 
-# Internal network for consul and Nomad
-resource "azurerm_subnet" "subnet3" {
-  name = "subnet3"
-  resource_group_name = "${azurerm_resource_group.development.name}"
-  virtual_network_name = "${azurerm_virtual_network.network.name}"
-  address_prefix = "10.0.3.0/24"
-}
+# Network interfaces for each defined subnets
+resource "azurerm_network_interface" "windows_netif" {
+  count = "${var.num_servers}"
 
-# Availability set; distribute nodes throughout AZ
-
-resource "azurerm_availability_set" "development" {
-  name = "devavailabilityset"
-  resource_group_name = "${azurerm_resource_group.development.name}"
-  location = "${azurerm_resource_group.development.location}"
-
-  tags {
-    environment = "Development"
-  }
-}
-
-# Public IP address?
-resource "azurerm_public_ip" "pubip" {
-    count = 1
-  name = "developmentPublicIP"
-  location = "${var.azure_region}"
-  resource_group_name = "${azurerm_resource_group.development.name}"
-  public_ip_address_allocation = "dynamic"
-  domain_name_label = "mydev"
-}
-
-resource "azurerm_public_ip" "pubip2" {
-    count = 0
-  name = "devPublicIP2"
-  location = "${azurerm_resource_group.development.location}"
-  resource_group_name = "${azurerm_resource_group.development.name}"
-  public_ip_address_allocation = "dynamic"
-  domain_name_label = "mydev2"
-
-  tags {
-    type = "Backup"
-  }
-}
-
-resource "azurerm_public_ip" "pubip3" {
-    count = 1
-  name = "devPublicIP3"
-  location = "${azurerm_resource_group.development.location}"
-  resource_group_name = "${azurerm_resource_group.development.name}"
-  public_ip_address_allocation = "dynamic"
-  domain_name_label = "myconsul"
-
-  tags {
-    type = "Consul"
-  }
-}
-
-# Attach the Public IP address to a Network Interface inside Subnet1 (10.0.1.0/24)
-resource "azurerm_network_interface" "network_interface" {
-    count = 1
-  name = "developmentNetworkInterface"
-  resource_group_name = "${azurerm_resource_group.development.name}"
-  location = "${var.azure_region}"
+  name = "${var.organization}-${var.project}-${var.environment}-windows-netif-${count.index + 1}"
+  resource_group_name = "${data.terraform_remote_state.nomadbox.resource_group_name}"
+  location = "${data.terraform_remote_state.nomadbox.resource_group_location}"
 
   ip_configuration {
-    name = "ipconfig1"
-    public_ip_address_id = "${azurerm_public_ip.pubip.id}"
-    private_ip_address = "10.0.1.4"
-    private_ip_address_allocation = "static"
-        subnet_id = "${azurerm_subnet.subnet1.id}"
+    name = "ipconf-${count.index + 1}"
+    subnet_id = "${element(azurerm_subnet.windows_subnet.*.id, count.index)}"
+    private_ip_address_allocation = "dynamic"
   }
 
-  enable_ip_forwarding = true
-
-  tags {
-    environment = "Development"
-  }
-
-}
-
-# Attach the second Public IP address to NetINterface inside Subnet2
-resource "azurerm_network_interface" "netint2" {
-    count = 0
-  name = "devNetworkInterface2"
-  resource_group_name = "${azurerm_resource_group.development.name}"
-  location = "${azurerm_resource_group.development.location}"
-  ip_configuration {
-    name = "ipconfig1"
-    public_ip_address_id = "${azurerm_public_ip.pubip2.id}"
-    private_ip_address = "10.0.2.4"
-    private_ip_address_allocation = "static"
-    subnet_id = "${azurerm_subnet.subnet2.id}"
-  }
-  enable_ip_forwarding = true
-
-  tags {
-    type = "Backup"
-  }
-}
-
-# Consul Network here ..
-resource "azurerm_network_interface" "netint3" {
-    count = 1
-  name = "devNetworkInterface3"
-  resource_group_name = "${azurerm_resource_group.development.name}"
-  location = "${azurerm_resource_group.development.location}"
-  ip_configuration {
-    name = "ipconfig3"
-    public_ip_address_id = "${azurerm_public_ip.pubip3.id}"
-    private_ip_address = "10.0.3.4"
-    private_ip_address_allocation = "static"
-    subnet_id = "${azurerm_subnet.subnet3.id}"
-  }
-
+  # Primary node more liberal; the rest lock down?
+  # network_security_group_id = ""
+  # Trademark name .. boo hiss .. windows ...
+  # Status=400 Code="DomainNameLabelReserved" Message="The domain name label acme-nomad-dev-windows-node-1 is invalid.
+  # The name itself or part of the name is a reserved word such as a trademark. Please use a different name."
+  internal_dns_name_label = "${var.organization}-${var.project}-${var.environment}-winzzz-node-${count.index + 1}"
   enable_ip_forwarding = true
 
   tags {
@@ -185,175 +83,68 @@ resource "azurerm_network_interface" "netint3" {
   }
 }
 
-resource "azurerm_storage_account" "development" {
-  name = "azurermdevsa"
-  resource_group_name = "${azurerm_resource_group.development.name}"
-  location = "${var.azure_region}"
-  account_type = "Standard_LRS"
-
-  tags {
-    environment = "Development"
-  }
-}
-
-resource "azurerm_storage_container" "development" {
-  name = "vhds"
-  resource_group_name = "${azurerm_resource_group.development.name}"
-  storage_account_name = "${azurerm_storage_account.development.name}"
-  container_access_type = "private"
-}
-
-resource "azurerm_virtual_machine" "dev2" {
-  count = 0
-  name = "backupvm"
-  location = "${azurerm_resource_group.development.location}"
-  resource_group_name = "${azurerm_resource_group.development.name}"
+# Next; setup the virtual_machines
+resource "azurerm_virtual_machine" "windows_node" {
+  count = "${var.num_servers}"
+  name = "${var.organization}-${var.project}-${var.environment}-windows-node-${count.index + 1}"
+  resource_group_name = "${data.terraform_remote_state.nomadbox.worker_resource_group_name}"
+  location = "${data.terraform_remote_state.nomadbox.resource_group_location}"
   network_interface_ids = [
-    "${azurerm_network_interface.netint2.id}"]
-  vm_size = "Standard_A0"
-  delete_os_disk_on_termination = true
-  delete_data_disks_on_termination = true
-
-  storage_image_reference {
-    publisher = "Canonical"
-    offer = "UbuntuServer"
-    sku = "16.04.0-LTS"
-    version = "latest"
-
-  }
-
-  storage_os_disk {
-    name = "myosdisk2"
-    vhd_uri = "${azurerm_storage_account.development.primary_blob_endpoint}${azurerm_storage_container.development.name}/myosdisk2.vhd"
-    caching = "ReadWrite"
-    create_option = "FromImage"
-  }
-
-  storage_data_disk {
-    name = "mydatadisk2"
-    create_option = "Empty"
-    disk_size_gb = 10
-    lun = 2
-    vhd_uri = "${azurerm_storage_account.development.primary_blob_endpoint}${azurerm_storage_container.development.name}/mydatadisk2.vhd"
-  }
-
-  os_profile {
-    computer_name = "backuphost"
-    admin_username = "testadmin"
-    admin_password = "passw0rd"
-    custom_data = "${base64encode(file("cloud-init.txt"))}"
-  }
-
-  os_profile_linux_config {
-    disable_password_authentication = true
-    ssh_keys {
-      path = "/home/testadmin/.ssh/authorized_keys"
-      key_data = "${file("/Users/leow/.ssh/id_rsa.pub")}"
-    }
-  }
-
-  availability_set_id = "${azurerm_availability_set.development.id}"
-
-  tags {
-    type = "Backup"
-  }
-}
-
-resource "azurerm_virtual_machine" "development" {
-  count = 1
-  name = "acctvm"
-  location = "${var.azure_region}"
-  resource_group_name = "${azurerm_resource_group.development.name}"
-  network_interface_ids = [
-    "${azurerm_network_interface.network_interface.id}"]
-  vm_size = "Standard_D2_v2"
-  delete_os_disk_on_termination = true
-
-  storage_image_reference {
-    publisher = "Canonical"
-    offer = "UbuntuServer"
-    sku = "16.04.0-LTS"
-    version = "latest"
-  }
-
-  storage_os_disk {
-    name = "myosdisk1"
-    vhd_uri = "${azurerm_storage_account.development.primary_blob_endpoint}${azurerm_storage_container.development.name}/myosdisk1.vhd"
-    caching = "ReadWrite"
-    create_option = "FromImage"
-  }
-
-  os_profile {
-    computer_name = "myprimary"
-    admin_username = "testadmin"
-    admin_password = "Password1234!"
-    custom_data = "${base64encode(file("cloud-init.txt"))}"
-  }
-
-  os_profile_linux_config {
-    disable_password_authentication = true
-    ssh_keys {
-      path = "/home/testadmin/.ssh/authorized_keys"
-      key_data = "${file("/Users/leow/.ssh/id_rsa.pub")}"
-    }
-  }
-
-  availability_set_id = "${azurerm_availability_set.development.id}"
-
-  tags {
-    environment = "Development"
-  }
-}
-
-
-resource "azurerm_virtual_machine" "windows" {
-  count = 1
-  name = "windowsvm"
-  location = "${var.azure_region}"
-  resource_group_name = "${azurerm_resource_group.development.name}"
-  network_interface_ids = [
-    "${azurerm_network_interface.netint3.id}"]
+    "${element(azurerm_network_interface.windows_netif.*.id, count.index)}"]
   # vm_size = "Standard_A0"
-  vm_size = "Standard_D4_v2"
+  vm_size = "${var.windows_distribution["instance_type"]}"
   delete_os_disk_on_termination = true
+
 
   storage_image_reference {
     publisher = "MicrosoftWindowsServer"
-    offer = "WindowsServer"
-    sku = "2016-Datacenter-with-Containers"
+    offer = "${var.windows_distribution["offer"]}"
+    sku = "${var.windows_distribution["sku"]}"
     version = "latest"
   }
 
   storage_os_disk {
-    name = "myosdisk1"
-    vhd_uri = "${azurerm_storage_account.development.primary_blob_endpoint}${azurerm_storage_container.development.name}/myosdisk3.vhd"
+    name = "${var.organization}-${var.project}-${var.environment}-windows-osdisc-${count.index + 1}"
+    vhd_uri = "${data.terraform_remote_state.nomadbox.storage_uri}/${var.organization}-${var.project}-${var.environment}-windows-osdisk-${count.index + 1}.vhd"
     caching = "ReadWrite"
     create_option = "FromImage"
+    # Min size is 30GB :(
+    // Windows give you 130GB; can;t reduce it :(
+    disk_size_gb = 130
   }
 
   os_profile {
-    computer_name = "myconsul"
+    // Computer name has a limit of 15 chars ... booo .. hiss..
+    computer_name = "Winzzz-${count.index + 1}-${var.environment}"
     admin_username = "testadmin"
-    admin_password = "Password1234!"
-    custom_data = "${base64encode(file("cloud-init.txt"))}"
+    admin_password = "!TestAdmin123456"
+    custom_data = "${base64encode(file("windows-cloud-init.txt"))}"
   }
 
   os_profile_windows_config {
+    // Below needed to install Extensions
     provision_vm_agent = true
-    enable_automatic_upgrades  = true
+    enable_automatic_upgrades = true
     winrm {
       protocol = "http"
     }
+    /*
+    additional_unattend_config {}
+    */
   }
 
-  availability_set_id = "${azurerm_availability_set.development.id}"
+  # For dev setup; don't even bother with Availability Sets
+  availability_set_id = "${(var.num_servers * 1 > 1) ? azurerm_availability_set.windows_aset.id : ""}"
+
+  // Needed if has booting up trouble ..?
+  // boot_diagnostics {}
 
   tags {
-    environment = "Development"
+    type = "Windows"
   }
 }
 
-
+/*
 resource "null_resource" "winrm" {
 
     connection {
@@ -371,4 +162,55 @@ resource "null_resource" "winrm" {
         ]
     }
 
+}
+*/
+
+resource "azurerm_storage_blob" "windows_cloudinit" {
+  // One script only; maybe only if customization or maybe for Nano Server will be different?
+  count = 1
+  name = "${var.organization}-${var.project}-${var.environment}-NomadBoxCloudInit.ps1"
+  resource_group_name = "${data.terraform_remote_state.nomadbox.resource_group_name}"
+  storage_account_name = "${data.terraform_remote_state.nomadbox.storage_account_name}"
+  storage_container_name = "${data.terraform_remote_state.nomadbox.storage_container_name}"
+  // type = "page"
+  // Absolute path ..
+  // source = "/Users/leow/..."
+  source_uri = "https://raw.githubusercontent.com/Microsoft/dotnet-core-sample-templates/master/dotnet-core-music-windows/scripts/configure-music-app.ps1"
+  attempts = 3
+}
+
+resource "azurerm_virtual_machine_extension" "windows_extension" {
+  count = "${var.num_servers}"
+  name = "${var.organization}-${var.project}-${var.environment}-windows-ext-${count.index + 1}"
+  resource_group_name = "${data.terraform_remote_state.nomadbox.worker_resource_group_name}"
+  location = "${data.terraform_remote_state.nomadbox.resource_group_location}"
+  publisher = "Microsoft.Compute"
+  type = "CustomScriptExtension"
+  type_handler_version = "1.8"
+  virtual_machine_name = "${element(azurerm_virtual_machine.windows_node.*.name, count.index)}"
+  auto_upgrade_minor_version = "true"
+
+  settings = <<SETTINGS
+  {
+        "fileUris": [ "https://raw.githubusercontent.com/Microsoft/dotnet-core-sample-templates/master/dotnet-core-music-windows/scripts/configure-music-app.ps1" ]
+  }
+SETTINGS
+  /* Storage node needs to be public!!
+  settings = <<SETTINGS
+  {
+        "fileUris": [ "${data.terraform_remote_state.nomadbox.storage_uri}/${var.organization}-${var.project}-${var.environment}-NomadBoxCloudInit.ps1" ]
+  }
+SETTINGS
+*/
+
+  // If below pass any sensitive items will not appear in the Terraform plan output :P
+  protected_settings = <<PROTECT_SETTINGS
+  {
+        "commandToExecute": "powershell.exe -ExecutionPolicy Unrestricted -File configure-music-app.ps1"
+  }
+PROTECT_SETTINGS
+  // Make it dependent on a provisioning upload to location for storage??
+  depends_on = [
+    "azurerm_storage_blob.windows_cloudinit"
+  ]
 }
