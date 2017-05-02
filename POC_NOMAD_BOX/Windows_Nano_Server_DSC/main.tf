@@ -95,7 +95,6 @@ resource "azurerm_virtual_machine" "windows_node" {
   vm_size = "${var.windows_distribution["instance_type"]}"
   delete_os_disk_on_termination = true
 
-
   storage_image_reference {
     publisher = "MicrosoftWindowsServer"
     offer = "${var.windows_distribution["offer"]}"
@@ -192,7 +191,7 @@ resource "azurerm_virtual_machine_extension" "windows_extension" {
 
   settings = <<SETTINGS
   {
-        "fileUris": [ "https://raw.githubusercontent.com/Microsoft/dotnet-core-sample-templates/master/dotnet-core-music-windows/scripts/configure-music-app.ps1" ]
+        "fileUris": [ "https://raw.githubusercontent.com/leowmjw/nomad-box/master/terraform/env-development/windows-cloud-init.ps1" ]
   }
 SETTINGS
   /* Storage node needs to be public!!
@@ -206,7 +205,7 @@ SETTINGS
   // If below pass any sensitive items will not appear in the Terraform plan output :P
   protected_settings = <<PROTECT_SETTINGS
   {
-        "commandToExecute": "powershell.exe -ExecutionPolicy Unrestricted -File configure-music-app.ps1"
+        "commandToExecute": "powershell.exe -ExecutionPolicy Unrestricted -File windows-cloud-init.ps1"
   }
 PROTECT_SETTINGS
   // Make it dependent on a provisioning upload to location for storage??
