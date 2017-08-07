@@ -10,7 +10,7 @@ provider "postgresql" {
 
 resource "postgresql_role" "pgrole" {
   count = 1
-  name = "myrestore"
+  name = "${var.sandman_user}"
   bypass_row_level_security = false
   create_database = false
   create_role = false
@@ -18,13 +18,13 @@ resource "postgresql_role" "pgrole" {
   login = true
   replication = false
   inherit = false
-  superuser = false
-  password = "${var.postgres_password}"
+  superuser = true
+  password = "${var.sandman_password}"
 }
 
 resource "postgresql_database" "pgdb" {
   count = 1
-  name = "myrestore"
+  name = "${var.sandman_user}"
   allow_connections = true
   encoding = "UTF8"
   lc_collate = "C"
@@ -32,7 +32,7 @@ resource "postgresql_database" "pgdb" {
   owner = "${postgresql_role.pgrole.name}"
   // Restore the file via the use of execution ..
   provisioner "local-exec" {
-    command = "sleep 5 && echo passw0rd | /Users/leow/POSTGRESQL/pg96/bin/pg_restore -U postgres -v -d myrestore --no-owner /tmp/sandmanback"
+    command = "sleep 5 && echo passw0rd | /Users/leow/POSTGRESQL/pg96/bin/pg_restore -h localhost -U sandman_development -v -d sandman_production --no-owner /Users/leow/POSTGRESQL/sandman-backup-2017-06-27_02-00-01"
   }
 }
 
